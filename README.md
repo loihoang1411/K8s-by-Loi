@@ -19,7 +19,10 @@ This project will show all about K8s: such as theory, how to deploy, and so on.
          * Addons
   3. Let's overview the Kubernetes's architecture once again
   4. In a Pod, you can have one or many containers?
-  5. How will Pod 1 and Pod 6 (these pods are in different node) interact? 
+  5. How will Pod 1 and Pod 6 (these pods are in different node) interact?
+
+[Practive](#practice)
+  1. Deploy K8s using Minikube
 
 ### Overview 
 K8s stands for Kubernetes.
@@ -107,3 +110,15 @@ Ideally, you see one container inside the Pod, named **main**, the other contain
 #### 5. How will Pod 1 and Pod 6 (these pods are in different node) interact?
 ![image](https://github.com/loihoang1411/K8s-by-Loi/assets/126635820/11776650-8237-4f88-8b4a-61785ec16aab)
 On every node, you'll have a **bridge 00** (or a subnet, like Local Area Network - LAN). **bridge 0** acts like a switch, so all the Pods running in the node will be able to communicate with each other. If you want to connect a Pod in a different node, **bridge 0** is going to forward the request to the **wg0**, **wg0** acts like a router. **wg0** is going to route it to the right node router by looking at the IP addres. Then the destination router recieves the request and forward to the destination switch and switch send to the destination Pod. Anyway, every node will have a small private network, and all these private networks will be connected in one bigger network. This is **Overlay network**.
+
+### Practice
+#### Deploy K8s using Minikube (Windows OS)
+  1. Install Git on your computer. (follow the link: https://git-scm.com/download/win)
+  2. Open Windows PowerShell as an Aministrator
+  3. Clone repository github (follow the link: https://github.com/devopshydclub/vprofile-project):
+     ```
+     cd ../..
+     cd Downloads
+     git clone https://github.com/devopshydclub/vprofile-project.git
+     
+   
