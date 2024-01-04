@@ -21,7 +21,7 @@ This project will show all about K8s: such as theory, how to deploy, and so on.
   4. In a Pod, you can have one or many containers?
   5. How will Pod 1 and Pod 6 (these pods are in different node) interact?
 
-[Practive](#practice)
+[Practice](#practice)
   1. Deploy K8s using Minikube
 
 ### Overview 
@@ -120,5 +120,198 @@ On every node, you'll have a **bridge 00** (or a subnet, like Local Area Network
      cd ../..
      cd Downloads
      git clone https://github.com/devopshydclub/vprofile-project.git
+     ```
+#### Deploy K8s using Kubespray:
+  1. Requirement: 3 nodes (2 CPUs and 4GB RAM, or higher). This is up to you, but anw, you should have at least 3 nodes, with 1 Master node and 2 Worker nodes. And you need another node to deploy K8s to 3 nodes above.
+  2. I'll use CentOS 7.9 operating system for 4 nodes and I rented these virtual machines from a cloud service provider. My nodes default to using the **_root_** user.  Run this command first: ```yum update -y```. Nodes's information are shown below:
+
+     **Deploy node:** 1 vCPU and 1GB RAM
+     ```
+      [root@deploy-node ~]# ip a
+      1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+          link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+          inet 127.0.0.1/8 scope host lo
+             valid_lft forever preferred_lft forever
+          inet6 ::1/128 scope host
+             valid_lft forever preferred_lft forever
+      2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+          link/ether fa:16:3e:80:86:c5 brd ff:ff:ff:ff:ff:ff
+          inet 192.168.0.19/24 brd 192.168.0.255 scope global dynamic eth0
+             valid_lft 86384sec preferred_lft 86384sec
+          inet6 fe80::f816:3eff:fe80:86c5/64 scope link
+             valid_lft forever preferred_lft forever
+     ```
+     **Target nodes:**
+
+     Master node (2vCPUs and 8GB RAM):
+     ```
+      [root@master-node ~]# ip a
+      1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+          link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+          inet 127.0.0.1/8 scope host lo
+             valid_lft forever preferred_lft forever
+          inet6 ::1/128 scope host
+             valid_lft forever preferred_lft forever
+      2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+          link/ether fa:16:3e:6e:e7:14 brd ff:ff:ff:ff:ff:ff
+          inet 192.168.0.48/24 brd 192.168.0.255 scope global dynamic eth0
+             valid_lft 84533sec preferred_lft 84533sec
+          inet6 fe80::f816:3eff:fe6e:e714/64 scope link
+             valid_lft forever preferred_lft forever
+     ```
+
+     Worker node 1 (2vCPUs and 8GB RAM):
+     ```
+      [root@worker-node-1 ~]# ip a
+      1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+          link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+          inet 127.0.0.1/8 scope host lo
+             valid_lft forever preferred_lft forever
+          inet6 ::1/128 scope host
+             valid_lft forever preferred_lft forever
+      2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+          link/ether fa:16:3e:53:84:4a brd ff:ff:ff:ff:ff:ff
+          inet 192.168.0.211/24 brd 192.168.0.255 scope global dynamic eth0
+             valid_lft 84640sec preferred_lft 84640sec
+          inet6 fe80::f816:3eff:fe53:844a/64 scope link
+             valid_lft forever preferred_lft forever
+     ```
      
+     Worker node 2 (2vCPUs and 8GB RAM):
+     ```
+      [root@worker-node-2 ~]# ip a
+      1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+          link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+          inet 127.0.0.1/8 scope host lo
+             valid_lft forever preferred_lft forever
+          inet6 ::1/128 scope host
+             valid_lft forever preferred_lft forever
+      2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+          link/ether fa:16:3e:db:9a:1c brd ff:ff:ff:ff:ff:ff
+          inet 192.168.0.54/24 brd 192.168.0.255 scope global dynamic eth0
+             valid_lft 85057sec preferred_lft 85057sec
+          inet6 fe80::f816:3eff:fedb:9a1c/64 scope link
+             valid_lft forever preferred_lft forever
+      ```
+4. Enable SSH connection between Deploy node to others and between Master node to Worker nodes.
+     - **At all nodes, do the following (Deploy node, for example):**
+
+     Generate SSH key:
+     ```ssh-keygen```. Results:
+     ```
+      [root@deploy-node ~]# ssh-keygen
+      Generating public/private rsa key pair.
+      Enter file in which to save the key (/root/.ssh/id_rsa):
+      Enter passphrase (empty for no passphrase):
+      Enter same passphrase again:
+      Your identification has been saved in /root/.ssh/id_rsa.
+      Your public key has been saved in /root/.ssh/id_rsa.pub.
+      The key fingerprint is:
+      SHA256:xxxabc... root@deploy-node.abcxyz
+      The key's randomart image is:
+      +---[RSA 2048]----+
+      |  12  o.=+=.     |
+      |  3  . . O *   . |
+      |  4     * 4 B *..|
+      |  5    * B o X oo|
+      |  6   6 S + 4 1 .|
+      |  7    1 = 2 +   |
+      |      o + E 2    |
+      |       3     2   |
+      |             21  |
+      +----[SHA256]-----+
+     ```
+     - **At Deploy node, SSH to the remaining nodes:**
+
+    To Master node:
+     ```ssh-copy-id root@192.168.0.48```. Results:
+     ```
+      [root@deploy-node ~]# ssh-copy-id root@192.168.0.48
+      /usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/root/.ssh/id_rsa.pub"
+      The authenticity of host '192.168.0.48 (192.168.0.48)' can't be established.
+      ECDSA key fingerprint is SHA256:t9/DL+62/z1I9knNiMTI7suM6cdrB6L28unXYRbkZQ4.
+      ECDSA key fingerprint is MD5:61:8c:87:d9:28:1e:96:e6:82:f6:60:3c:7e:8d:70:71.
+      Are you sure you want to continue connecting (yes/no)? yes
+      /usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+      /usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+      root@192.168.0.48's password:
+      
+      Number of key(s) added: 1
+      
+      Now try logging into the machine, with:   "ssh 'root@192.168.0.48'"
+      and check to make sure that only the key(s) you wanted were added.
+     ```
+
+
+   To Worker node 1:
+     ```ssh-copy-id root@192.168.0.211```
+
+   To Worker node 2:
+     ```ssh-copy-id root@192.168.0.54```
    
+     - **At Master node, SSH to the Worker noes:**
+
+   To Worker node 1:
+     ```ssh-copy-id root@192.168.0.211```
+
+   To Worker node 2:
+     ```ssh-copy-id root@192.168.0.54```
+5. Deploy
+
+   At Deploy nodes, do the following:
+   - Git clone Kubespray, version 2.16:
+     ```
+     yum install git -y
+     git clone https://github.com/kubernetes-sigs/kubespray.git --branch release-2.16
+     ```
+   - Go to the folder:
+     ```
+     cd kubespray/inventory/sample/
+     ```
+   - Create and write ```host.yaml``` file:
+     ```
+     vi host.yaml
+     ```
+     Content:
+     ```
+      [all]
+      master ansible_host=192.168.0.48 ip=192.168.0.48
+      worker1 ansible_host=192.168.0.211 ip=192.168.0.211
+      worker2 ansible_host=192.168.0.54 ip=192.168.0.54
+      
+      [kube_control_plane]
+      master
+      
+      [etcd]
+      master
+      
+      [kube_node]
+      worker1
+      worker2
+      
+      [k8s_cluster:children]
+      kube_node
+      kube_control_plane
+     ```
+   - Install docker:
+     ```
+     curl -fsSL https://get.docker.com/ | sh
+     systemctl start docker
+     ```
+   - Docker run:
+     ```
+     docker run --rm -it --mount type=bind,source=/root/kubespray/inventory/sample/,dst=/kubespray/inventory quay.io/kubespray/kubespray:v2.16.0 bash 
+     ```
+     After running the above command, we have already executed it inside the container. Please note that the prompt will now be "root@a3247643f8e2:/kubespray#".
+
+     Now, you'll enable SSH connection between the container to other nodes (except Deploy node):
+     ```
+     ssh-keygen
+     ssh-copy-id root@192.168.0.48
+     ssh-copy-id root@192.168.0.211
+     ssh-copy-id root@192.168.0.54
+     ```
+
+     Run the final command:
+     ```ansible-playbook -i inventory/host.yaml cluster.yml```
+     
